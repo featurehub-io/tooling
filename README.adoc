@@ -1,0 +1,4 @@
+= FeatureHub Tooling
+
+This repository holds various plugins for Maven and other tools we find we use in general automation.
+
