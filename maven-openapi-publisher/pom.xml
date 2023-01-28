@@ -46,8 +46,8 @@
 		<maven.compiler.target>1.11</maven.compiler.target>
 		<maven.compiler.source>1.11</maven.compiler.source>
 		<kotlin.version>1.7.10</kotlin.version>
-		<jackson.version>2.13.4</jackson.version>
-		<maven.version>3.8.6</maven.version>
+		<jackson.version>2.14.1</jackson.version>
+		<maven.version>3.8.7</maven.version>
 	</properties>
 
 	<prerequisites>
@@ -55,10 +55,22 @@
 	</prerequisites>
 
 	<dependencies>
+    <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>1.15</version>
+    </dependency>
+
 		<dependency>
 			<groupId>io.swagger.parser.v3</groupId>
 			<artifactId>swagger-parser</artifactId>
 			<version>2.1.11</version>
+      <exclusions>
+        <exclusion>
+          <groupId>commons-codec</groupId>
+          <artifactId>commons-codec</artifactId>
+        </exclusion>
+      </exclusions>
 		</dependency>
 
     <dependency>
@@ -140,6 +152,27 @@
 
 	<build>
 		<plugins>
+      <plugin>
+        <groupId>org.sonatype.plugins</groupId>
+        <artifactId>nexus-staging-maven-plugin</artifactId>
+        <version>1.6.13</version>
+        <executions>
+          <execution>
+            <id>deploy</id>
+            <goals>
+              <goal>deploy</goal>
+            </goals>
+            <phase>deploy</phase>
+          </execution>
+        </executions>
+        <configuration>
+          <keepStagingRepositoryOnCloseRuleFailure>true</keepStagingRepositoryOnCloseRuleFailure>
+          <serverId>sonatype-staging</serverId>
+          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+          <autoReleaseAfterClose>true</autoReleaseAfterClose>
+        </configuration>
+      </plugin>
+
 			<plugin>
 				<groupId>org.codehaus.plexus</groupId>
 				<artifactId>plexus-component-metadata</artifactId>
