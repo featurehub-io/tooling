@@ -1,21 +1,125 @@
-= Maven OpenAPI Publisher
+= FeatureHub Maven OpenAPI Publisher
 
-The purpose of this Publisher is to take in a single OpenApi document and
+== Overview
 
- - remove unnecessary schema elements
- - point to a folder where there is a `releases.json` file
- - write out the version of the API based on the `info.version` section
- - update the releases.json file to include this version.
+This Maven Plugin sanitises OpenAPI documents for `x-` based annotations used on internal OpenAPI generators, and
+ensures there is a `releases.json` file that accurately reflects what APIs are being used.
 
-The `releases.json` file looks like this:
+
+=== Custom `X-` Annotations
+FeatureHub uses a number of custom OpenAPI generators (Java Jersey, Typescript Axios using classes, Dart) that it 
+maintains responsibility for, and each of these
+tends to have extra `x-` annotations intended to communicate extra behaviour to the underlying generator. This
+is generally useful for internal use but not so useful for public use and can be confusing. 
+
+For example, we add these three annotations which are used in our Java Jersey OpenAPI generator:
+
+----
+    EnrichedFeatures:
+      x-cloudevent-type: enriched-feature-v1
+      x-cloudevent-subject: io.featurehub.events.enricher
+      x-package: io.featurehub.enriched.model
+----
+
+The `x-cloudevent` annotations allow reuse of the data model for CloudEvents and tie into the internal CloudEvents
+event-bus that the microservices use. `x-package` allows us to specify a consistent package name when parts of the
+API files are being used across different microservices.
+
+We also have an annotation that renames the JSON field that is used, but preserves the field name that gets used in
+the generated classes. This in particular would confuse users of other API generators as they won't know that the
+JSON data is `oId` for the field `organisationId` for example.
+
+=== Stripping unused classes
+
+At FeatureHub, we split our API components and reuse them in various layered APIs using the Maven Merge YAML plugin. This
+can lead to a surfeit of schema definitions, and this plugin will remove those unused schema definitions. It will start from
+the APIs and walk its way down to the schemas, and then through those tagged schemas. Eventually it will have a list of
+schemas used by APIs or schemas used by APIs and then drop the rest (it will log which ones it is dropping). You can
+force a schema to be retained by tagging ith with `x-publish-include` - but see the details of the Maven Plugin options.
+
+=== Publishing APIs
+
+We generally want to keep our APIs generated into a well known location and their public consumption variants kept up to
+date in the latest sets of commits. When we release a new version of FeatureHub, we want to publish those APIs (thus
+marking them available for public use and marking them unchangeable), and trigger downstream compilation of our SDKs
+and Admin SDKs. 
+
+This plugin also does this by being able to retain a `releases.json` file. If you have specified the folder for the
+`releases.json` to go into, it will output the stripped down OpenAPI YAML document using its `info.version` number,
+and update/create the `releases.json` file in the same folder. This looks something like this:
 
 ----
 {
   "latest": "1.1.9",
-  "versions": ["1.1.5", "1.1.6","1.1.8", "1.1.9"]
-  "published": ["1.1.5", "1.1.6","1.1.8", "1.1.9", "1.1.10"]
+  "versions": ["1.1.5", "1.1.6","1.1.8", "1.1.9", "1.1.10"]
+  "published": ["1.1.5", "1.1.6","1.1.8", "1.1.9"]
 }
 ----
 
-There are two goals, `reconcile` and `publish`
+Versions 1.1.5, 1.1.6, 1.1.8 and 1.1.9 were published and locked (and cannot be updated). The latest published version
+is 1.19 and there is a 1.1.10 in transition available in the file system.
+
+NOTE: At FeatureHub, we use https://www.pulumi.com/[Pulumi] to synchronise our assets on release with our API Cloud Storage.  
+
+== The Maven Goals
+
+There are two goals, `reconcile` and `publish`. `reconcile` has the capability of doing two things - publishing by creating a `releases.json` file, or simply writing out the OpenAPI stripped of unnecessary classes, it can be useful when you have merged various files together,
+and wish to have unnecessary schemas removed.
+
+In common they share:
+
+[source,xml]
+----
+<plugin>
+  <groupId>io.featurehub.tooling</groupId>
+  <artifactId>maven-openapi-publisher</artifactId>
+  <version>1.1</version>
+  <executions>
+    <execution>
+      <id>export</id>
+      <goals><goal>reconcile</goal></goals>
+      <phase>initialize</phase>
+      <configuration>
+        <alwaysIncludeTagValues>
+          <alwaysIncludeTagValue>enricher</alwaysIncludeTagValue>
+        </alwaysIncludeTagValues>
+        <removeObjectExtensions>
+          <removeObjectExtension>x-mycompany</removeObjectExtension>
+        </removeObjectExtensions>
+        <removePropertyExtensions>
+          <removePropertyExtension>x-basename</removePropertyExtension>
+        </removePropertyExtensions>
+        <illegalExtensions>
+          <illegalExtension>x-mustnotbeincluded</illegalExtension>
+        </illegalExtensions>
+        <apiSource>${project.build.directory}/final.yaml</apiSource>
+        <releaseFolder>${project.basedir}/../../infra/api-bucket/files/webhooks</releaseFolder>
+      </configuration>
+    </execution>
+  </executions>
+</plugin>
+----
+
+The `publish` goal is exactly the same, but it:
+
+* ensures that the API has not changed on disk, otherwise the build fails
+* ensures the build is not already been published, otherwise the build fails
+* moves the current `info.version` into the `latest` field, and adds it to the `published` field list.
+
+An explanation of the individual fields in the plugin:
+
+* `*alwaysIncludeTagValues*` - this allows you to override the method used to cull unused schemas. It is a _tag_ - you need to
+add the `x-publish-include` annotation to your schema and specify a comma separated list of tags, of which one must match this value.
+By using a comma separated list of tags, it allows you to ensure that a particular schema is published in certain exports, but not other
+exports. 
+* `*removeObjectExtensions*` - these are extensions you should remove in your `type: object` schemas. 
+* `*removePropertyExtensions*` - these are extensions you should remove in your property or additionalPropertys.
+* `*illegalExtensions*` - these are extensions that if detected, cause the build to fail. It means a schema has leaked out that should
+never be exposed. For example - we have one called `x-property-ref` which allows `additionalProperty` fields to have their key as a complex
+class - as opposed to the requirement for OpenAPI that they _always_ be a string. This means OpenAPI clients that are managed by us can
+deal with this, but none others can, so we cannot let schemas of this type leak into the public API by accident.
+* `*apiSource*` - this is where the OpenAPI YAML file to process is sourced from
+* `*releaseFolder*` - if specified (it must be specified on `publish`), it is where the stripped schema is written and the `releases.json` file is updated/written.
+* `*reconciledApi*` - (not shown) - if this is specified, then no extension stripping takes place and the file is written directly based on the
+file specified in this field. It can be used to simply allow you to use after you have stripped out unnecessary API schemas.
 
