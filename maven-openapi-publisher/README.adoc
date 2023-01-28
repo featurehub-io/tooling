@@ -1,0 +1,17 @@
+= Maven OpenAPI Publisher
+
+The purpose of this Publisher is to take in a single OpenApi document and
+
+ - remove unnecessary schema elements
+ - point to a folder where there is a `releases.json` file
+ - write out the version of the API based on the `info.version` section
+ - update the releases.json file to include this version.
+
+The `releases.json` file looks like this:
+
+----
+{
+  "latest": "1.1.10",
+  "versions": ["1.1.5", "1.1.6","1.1.8", "1.1.9", "1.1.10"]
+}
+----
