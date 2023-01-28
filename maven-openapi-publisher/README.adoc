@@ -11,7 +11,11 @@ The `releases.json` file looks like this:
 
 ----
 {
-  "latest": "1.1.10",
-  "versions": ["1.1.5", "1.1.6","1.1.8", "1.1.9", "1.1.10"]
+  "latest": "1.1.9",
+  "versions": ["1.1.5", "1.1.6","1.1.8", "1.1.9"]
+  "published": ["1.1.5", "1.1.6","1.1.8", "1.1.9", "1.1.10"]
 }
 ----
+
+There are two goals, `reconcile` and `publish`
+
