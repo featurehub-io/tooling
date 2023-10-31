@@ -265,6 +265,10 @@ class Reconcile(private val api: OpenAPI, private val extensions: Extensions) {
     }
   }
 
+  private fun allAnyOneOfTraversal(traverse: List<Schema<*>>, schemas: Map<String, Schema<*>>) {
+    traverse.forEach { schema -> strip(schema)?.let { discoverRef(it, schemas) } }
+  }
+
   private fun processComponent(obj: Schema<*>?, schemas: Map<String, Schema<*>>) {
     if (obj == null) {
       return
@@ -282,6 +286,10 @@ class Reconcile(private val api: OpenAPI, private val extensions: Extensions) {
         strip(property.items)?.let {
           discoverRef(it, schemas)
         }
+
+        property.allOf?.let { allAnyOneOfTraversal(it, schemas) }
+        property.oneOf?.let { allAnyOneOfTraversal(it, schemas) }
+        property.anyOf?.let { allAnyOneOfTraversal(it, schemas) }
 
         if (property.additionalProperties != null) {
           strip(property.additionalProperties as Schema<*>)?.let {

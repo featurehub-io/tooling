@@ -11,6 +11,7 @@
 	</description>
 
   <url>https://featurehub.io</url>
+
   <developers>
     <developer>
       <email>irina@featurehub.io</email>
@@ -42,7 +43,7 @@
   </scm>
 
 	<properties>
-		<openapi-codegen-version>6.2.1</openapi-codegen-version>
+		<openapi-codegen-version>7.0.1</openapi-codegen-version>
 		<maven.compiler.target>1.11</maven.compiler.target>
 		<maven.compiler.source>1.11</maven.compiler.source>
 		<kotlin.version>1.7.10</kotlin.version>

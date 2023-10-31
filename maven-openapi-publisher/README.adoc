@@ -123,3 +123,7 @@ deal with this, but none others can, so we cannot let schemas of this type leak 
 * `*reconciledApi*` - (not shown) - if this is specified, then no extension stripping takes place and the file is written directly based on the
 file specified in this field. It can be used to simply allow you to use after you have stripped out unnecessary API schemas.
 
+== A fuller example from FeatureHub
+
+In FeatureHub - we use a profile to trigger the two states, so that as we release a version, we can the publish release script to generate
+the correct updates. Our 
