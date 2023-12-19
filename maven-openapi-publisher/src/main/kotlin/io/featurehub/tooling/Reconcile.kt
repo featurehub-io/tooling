@@ -187,7 +187,7 @@ class Reconcile(private val api: OpenAPI, private val extensions: Extensions) {
           schema.properties.remove(key)
 
           // if the old key was required, remove it from the list and add the new property name
-          if (schema.required.remove(key)) {
+          if (schema.required?.remove(key) == true) {
             schema.required.add(newPropertyName)
           }
 
