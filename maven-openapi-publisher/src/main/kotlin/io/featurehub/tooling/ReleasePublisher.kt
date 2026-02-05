@@ -39,7 +39,7 @@ class Releases {
   }
 }
 
-class AlreadyPublished : RuntimeException("API has been published you cannot update it, you must change the version")
+class AlreadyPublished : RuntimeException("API has been published you cannot update it, you must change the version. Overwriting file so you can see changes.")
 class ApiNotUpToDate : RuntimeException("API file has not been updated, it must be updated and committed before publishing")
 
 class ReleasePublisher(private val api: OpenAPI) {
@@ -65,6 +65,7 @@ class ReleasePublisher(private val api: OpenAPI) {
       val existingData = apiFile.bufferedReader().readText()
       if (existingData != data) {
         if (releases.published.contains(api.info.version)) {
+          apiFile.writeText(data)
           throw AlreadyPublished()
         }
 
@@ -101,7 +102,7 @@ class ReleasePublisher(private val api: OpenAPI) {
         throw ApiNotUpToDate()
       }
     } else {
-      log.error("API ${api.info.title}:${api.info.version} there is no file on disk at all.")
+      log.error("API ${api.info.title}:${api.info.version} there is no file on disk at all: ${apiFile.absolutePath}.")
       throw ApiNotUpToDate() // doesn't exist at all
     }
 
